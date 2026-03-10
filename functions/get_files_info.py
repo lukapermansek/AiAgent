@@ -6,8 +6,8 @@ def get_files_info(working_directory, directory="."):
         target_dir = os.path.normpath(os.path.join(absolute_path_working_dir, directory))
     
         #Find the common path between asbsolute path of working dir and target dir.
-        #Id that path is == absolute path of working dir, that means that target dir is within the working dir.
-        #Check is represented by bool value saved in valid_target_dir variable.
+        #If that path == absolute path of working dir, that means that target dir is within the working dir.
+        #Check is represented by a bool value assigned to valid_target_dir variable.
         valid_target_dir = os.path.commonpath([absolute_path_working_dir, target_dir]) == absolute_path_working_dir
 
         if valid_target_dir is False:
@@ -24,6 +24,7 @@ def get_files_info(working_directory, directory="."):
             result_list.append(f"- {item}: file_size={os.path.getsize(item_path)}, is_dir={is_dir}")
 
         return "\n".join(result_list)
+    
     except Exception as e:
         return f"Error: {str(e)}"
 
