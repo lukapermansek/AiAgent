@@ -18,55 +18,65 @@ def get_args():
     parser.add_argument("user_prompt", type=str, help="User prompt")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
     return parser.parse_args()
-
+    
 def main():
     client = get_client()
     args = get_args()
 
     messages = [types.Content(role="user", parts=[types.Part(text=args.user_prompt)])]
 
-    response = client.models.generate_content(
-        model='gemini-2.5-flash', 
-        contents=messages,
-        config=types.GenerateContentConfig(
-            system_instruction=system_prompt,
-            tools=[available_functions]
-            )
-    )
-
-    if response.usage_metadata is None:
-        raise RuntimeError("Likely failed API request.")
-
-    if args.verbose:
-        print(f"User prompt: {args.user_prompt}")
-        print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
-        print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
     
-    if response.function_calls is not None:
-        for i in response.function_calls:
-            print(f"Calling function: {i.name}({i.args})")
-            
-            function_call_result = call_function(i)
-            function_results = []
-            
-            if function_call_result.parts is None:
-                raise Exception("Function call returned a empty .parts list")
-            
-            if function_call_result.parts[0].function_response is None:
-                raise Exception("FunctionReponse object is None")
-            
-            if function_call_result.parts[0].function_response.response is None:
-                raise Exception(".response field of FunctionResponse is empty")
+    for _ in range(20):
+        function_results = []
 
-            function_results.append(function_call_result.parts[0])
+        response = client.models.generate_content(
+            model='gemini-2.5-flash', 
+            contents=messages,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                tools=[available_functions]
+                )
+        )
 
-            if args.verbose:
-                print(f"-> {function_call_result.parts[0].function_response.response}")
+        if response.candidates is not None:
+            for i in response.candidates:
+                if i.content is not None:
+                    messages.append(i.content)
 
-            print(function_results)
+        if response.usage_metadata is None:
+            raise RuntimeError("Likely failed API request.")
+
+        if args.verbose:
+            print(f"User prompt: {args.user_prompt}")
+            print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
+            print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+        
+        if response.function_calls is not None:
+            for i in response.function_calls:
+                
+                function_call_result = call_function(i)
+                
+                if function_call_result.parts is None:
+                    raise Exception("Function call returned a empty .parts list")
+                
+                if function_call_result.parts[0].function_response is None:
+                    raise Exception("FunctionReponse object is None")
+                
+                if function_call_result.parts[0].function_response.response is None:
+                    raise Exception(".response field of FunctionResponse is empty")
+
+                function_results.append(function_call_result.parts[0])
+
+                if args.verbose:
+                    print(f"-> {function_call_result.parts[0].function_response.response}")
+            
+                messages.append(types.Content(role="tool", parts=function_results))
+        else:
+            print(response.text)
+            break
+    
     else:
-        print(response.text)
-
+        raise SystemExit(1)
 
 if __name__ == "__main__":
     main()
